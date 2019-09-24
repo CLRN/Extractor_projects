@@ -33,6 +33,7 @@
 #include "ExtractorCommon.h"
 
 #include "TileMsgBlock.h"
+#include <fstream>
 
 using namespace VMAP;
 
@@ -327,7 +328,34 @@ namespace MMAP
         m_terrainBuilder->loadOffMeshConnections(mapID, tileX, tileY, meshData, m_offMeshFilePath);
 
         printf(" Building map %03u - Tile [%02u,%02u]\n", mapID, tileX, tileY);
-        buildMoveMapTile(mapID, tileX, tileY, meshData, bmin, bmax, navMesh);
+
+        {
+            char buffer[1024] = {};
+            sprintf(buffer, "%03u-%02u-%02u.obj", mapID, tileX, tileY);
+
+            std::ofstream ofs(buffer, std::ofstream::binary);
+
+            const float* data = meshData.solidVerts.getCArray();
+            for (int i = 0; i < meshData.solidVerts.size(); i += 3)
+                ofs << "v " << data[i] << " " << data[i + 1] << " " << data[i + 2] << std::endl;
+
+            const int* tris = meshData.solidTris.getCArray();
+            size_t countMissed = 0;
+            for (int i = 0; i < meshData.solidTris.size(); i += 3)
+            {
+                if (tris[i + 0] >= meshData.solidVerts.size() ||
+                    tris[i + 1] >= meshData.solidVerts.size() ||
+                    tris[i + 2] >= meshData.solidVerts.size())
+                {
+                    ++countMissed;
+                    continue;
+                }
+
+                ofs << "f " << tris[i] + 1 << " " << tris[i + 1] + 1 << " " << tris[i + 2] + 1 << std::endl;
+            }
+        }
+
+        // buildMoveMapTile(mapID, tileX, tileY, meshData, bmin, bmax, navMesh);
     }
 
     /**************************************************************************/
